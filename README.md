@@ -59,24 +59,24 @@
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Searches the listings file for items matching a description, optional size and price ceiling
+- **Inputs:** Description (str), size (str or None), max_price (float or None)
+- **Returns:** A list of listing dicts, each with id, title, description, category, style_tags, size, condition, price, colors, brand (can be None), and platform. Size matches if any token in the listing's size matches (so "M" matches "S/M"), and "ONE SIZE" listings match any size.
+- **When it has nothing:** Returns an empty list, never None
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Takes a thrifted listing and the user's wardrobe and suggests one or two outfits that pair the item with pieces the user already owns.
+- **Inputs:** new_item (dict, one listing), wardrobe (dict with an "items" key holding a list of wardrobe item dicts, each with id, name, category, colors, style_tags, notes)
+- **Returns:** A non-empty str of outfit suggestions.
+- **When it has nothing:** If wardrobe["items"] is empty, returns a non-empty str of general styling advice for the item. Never raises and never returns "".
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Writes a short caption someone would actually post about the find.
+- **Inputs:** outfit (str, the suggestion text from suggest_outfit), new_item (dict, one listing)
+- **Returns:** A str caption, two to four sentences.
+- **When it has nothing:** If outfit is empty or whitespace, returns a descriptive message str instead of raising.
 
 ---
 
