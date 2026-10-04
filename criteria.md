@@ -25,6 +25,7 @@ Given a query that matches at least one listing, the agent completes all three
 tool calls and returns a fit card — in at least 4 of 5 tries.
 
 **Why this target:**
+Perfection isn't realistic here. My search is a plain keyword match, so some phrasings will miss, and the fit card comes from a model that can vary. 4 of 5 (80%) is reliable enough to hand to a user, while 5 of 5 would be unfair to those two sources of variation.
 <!-- Why 4 of 5 and not 5 of 5? Something about your search, probably —
      "my search is a plain keyword match and some phrasings will miss" is a
      real answer. -->
@@ -37,12 +38,14 @@ Given a query that matches no listings, the agent stops before calling
 `suggest_outfit` and returns a message naming what to change — 5 of 5 tries.
 
 **Why this target:**
-<!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
+5 of 5 because this path never calls the model. The branch is a simple check for an empty list, so it should behave the same every time. The message names what to change (size, price, or keywords) so the user knows how to retry.<!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
      about this path? -->
+
 
 ---
 
-## 3. Something about state
+## 3. Something about state'
+In 4 of 5 happy-path runs, the i.d. of session ["selected_item"] is identical to the i.d. of the item that reached 'suggest_outfit'. 
 
 <!-- YOU WRITE THIS ONE.
 
@@ -57,13 +60,13 @@ Given a query that matches no listings, the agent stops before calling
 
 
 **Why this target:**
-
+Checking the id through the session confirms that the item the search found is the same item the next tool received, so the outfit is built for the listing the user actually got.
 
 
 ---
 
 ## 4. Something about the fit card
-
+In 4 of 5 happy-path runs, the fit card includes the listing's price and is 2 to 4 sentences long.
 <!-- YOU WRITE THIS ONE.
 
      The fit card calls a model, so the same input can produce different words
@@ -78,13 +81,10 @@ Given a query that matches no listings, the agent stops before calling
 
 
 **Why this target:**
-
-
-
----
+A model writes the caption, so the wording changes from run to run and it will occasionally skip the price or run long. 4 of 5 allows for that variation without letting a caption that ignores the price count as working.
 
 ## 5. Your choice
-
+In 4 of 5 searches with max_price=40 that match at least one listing, every listing returned costs $40 or less.
 <!-- YOU WRITE THIS ONE TOO.
 
      Pick something you actually care about getting right. Speed, the empty
@@ -95,9 +95,7 @@ Given a query that matches no listings, the agent stops before calling
 
 
 **Why this target:**
-
-
-
+The results must stay within the max_price the user gives and never include anything above it. This is plain filtering with no model, so a miss would point to a real bug in the search, not randomness. 
 ---
 
 <!-- ─────────────────────────────────────────────────────────────────────────
