@@ -136,8 +136,34 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
     Test it from a terminal before you move on:
         python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
     """
-    # TODO: replace this with your implementation
-    return ""
+    wanted = _keywords(description)
+    scored = []
+
+    for listing in load_listings():
+        # price filter (inclusive)
+        if max_price is not None and listing["price"] > max_price:
+            continue
+
+        # size filter
+        if size and not _size_matches(size, listing.get("size") or ""):
+            continue
+
+        # build one searchable string; brand can be None, so use "or"
+        haystack = " ".join([
+            listing.get("title") or "",
+            listing.get("description") or "",
+            listing.get("category") or "",
+            listing.get("brand") or "",
+            " ".join(listing.get("style_tags") or []),
+            " ".join(listing.get("colors") or []),
+        ])
+
+        score = len(wanted & _keywords(haystack))
+        if score > 0:
+            scored.append((score, listing))
+
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [listing for _, listing in scored[:config.SEARCH_RESULT_LIMIT]]
 
 
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────
