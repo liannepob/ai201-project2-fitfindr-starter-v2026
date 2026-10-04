@@ -102,8 +102,34 @@ def search_listings(
     Test it from a terminal before you move on:
         python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
     """
-    # TODO: replace this with your implementation
-    return []
+    wanted = _keywords(description)
+    scored = []
+
+    for listing in load_listings():
+        # price filter (inclusive)
+        if max_price is not None and listing["price"] > max_price:
+            continue
+
+        # size filter
+        if size and not _size_matches(size, listing.get("size") or ""):
+            continue
+
+        # one searchable string; brand can be None, so use "or"
+        haystack = " ".join([
+            listing.get("title") or "",
+            listing.get("description") or "",
+            listing.get("category") or "",
+            listing.get("brand") or "",
+            " ".join(listing.get("style_tags") or []),
+            " ".join(listing.get("colors") or []),
+        ])
+
+        score = len(wanted & _keywords(haystack))
+        if score > 0:
+            scored.append((score, listing))
+
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [listing for _, listing in scored[:config.SEARCH_RESULT_LIMIT]]
 
 
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
@@ -136,34 +162,32 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
     Test it from a terminal before you move on:
         python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
     """
-    wanted = _keywords(description)
-    scored = []
+    items = (wardrobe or {}).get("items") or []
 
-    for listing in load_listings():
-        # price filter (inclusive)
-        if max_price is not None and listing["price"] > max_price:
-            continue
+    item_desc = (
+        f"{new_item['title']} (${new_item['price']}, size {new_item['size']}, "
+        f"colors: {', '.join(new_item.get('colors') or [])}, "
+        f"style: {', '.join(new_item.get('style_tags') or [])})"
+    )
 
-        # size filter
-        if size and not _size_matches(size, listing.get("size") or ""):
-            continue
+    if not items:
+        prompt = (
+            f"I just found this thrifted item: {item_desc}.\n"
+            "I haven't entered a wardrobe yet. Give me one or two outfit ideas "
+            "with general pieces that would go with it."
+        )
+    else:
+        owned = "\n".join(
+            f"- {i['name']} ({', '.join(i.get('colors') or [])})" for i in items
+        )
+        prompt = (
+            f"I just found this thrifted item: {item_desc}.\n"
+            f"My wardrobe:\n{owned}\n\n"
+            "Suggest one or two outfits that pair the new item with specific "
+            "pieces from my wardrobe. Name the pieces I own."
+        )
 
-        # build one searchable string; brand can be None, so use "or"
-        haystack = " ".join([
-            listing.get("title") or "",
-            listing.get("description") or "",
-            listing.get("category") or "",
-            listing.get("brand") or "",
-            " ".join(listing.get("style_tags") or []),
-            " ".join(listing.get("colors") or []),
-        ])
-
-        score = len(wanted & _keywords(haystack))
-        if score > 0:
-            scored.append((score, listing))
-
-    scored.sort(key=lambda pair: pair[0], reverse=True)
-    return [listing for _, listing in scored[:config.SEARCH_RESULT_LIMIT]]
+    return generate(prompt)
 
 
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────
