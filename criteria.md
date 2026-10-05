@@ -44,7 +44,7 @@ Given a query that matches no listings, the agent stops before calling
 
 ---
 
-## 3. Something about state'
+## 3. Something about state
 In 4 of 5 happy-path runs, the i.d. of session ["selected_item"] is identical to the i.d. of the item that reached 'suggest_outfit'. 
 
 <!-- YOU WRITE THIS ONE.
@@ -82,6 +82,8 @@ In 4 of 5 happy-path runs, the fit card includes the listing's price and is 2 to
 
 **Why this target:**
 A model writes the caption, so the wording changes from run to run and it will occasionally skip the price or run long. 4 of 5 allows for that variation without letting a caption that ignores the price count as working.
+
+---
 
 ## 5. Your choice
 In 4 of 5 searches with max_price=40 that match at least one listing, every listing returned costs $40 or less.
