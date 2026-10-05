@@ -40,7 +40,7 @@
 ## What This Does
 
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
-
+A user types what they want to thrift in plain language, like "vintage graphic tee under $30, size M". FitFindr parses the query, searches the listings file, and picks the top match. It then suggests one or two outfits that pair the item with pieces from the user's wardrobe and writes a short caption they could post. If nothing matches, it stops before the outfit step and tells the user what to change (keywords, size, or price ceiling).
 
 
 ---
@@ -59,24 +59,24 @@
 
 ### `search_listings`
 
-- **What it does:** Searches the listings file for items matching a description, optional size and price ceiling
-- **Inputs:** Description (str), size (str or None), max_price (float or None)
-- **Returns:** A list of listing dicts, each with id, title, description, category, style_tags, size, condition, price, colors, brand (can be None), and platform. Size matches if any token in the listing's size matches (so "M" matches "S/M"), and "ONE SIZE" listings match any size.
-- **When it has nothing:** Returns an empty list, never None
+- **What it does:** Searches the listings file for items matching a description, an optional size, and an optional price ceiling.
+- **Inputs:** description (str), size (str or None), max_price (float or None)
+- **Returns:** A list of listing dicts, best match first, capped at config.SEARCH_RESULT_LIMIT. Each dict has id, title, description, category, style_tags, size, condition, price, colors, brand (can be None), and platform. Listings are scored by keyword overlap with the description and anything scoring zero is dropped. max_price is inclusive. A size matches if any slash-separated token in the listing's size equals the requested size (so "M" matches "S/M"), and "ONE SIZE" listings match any size.
+- **When it has nothing:** Returns an empty list [], never None.
 
 ### `suggest_outfit`
 
 - **What it does:** Takes a thrifted listing and the user's wardrobe and suggests one or two outfits that pair the item with pieces the user already owns.
 - **Inputs:** new_item (dict, one listing), wardrobe (dict with an "items" key holding a list of wardrobe item dicts, each with id, name, category, colors, style_tags, notes)
 - **Returns:** A non-empty str of outfit suggestions.
-- **When it has nothing:** If wardrobe["items"] is empty, returns a non-empty str of general styling advice for the item. Never raises and never returns "".
+- **When it has nothing:** If wardrobe["items"] is empty, it returns a non-empty str of general styling ideas for the item. It never raises and never returns "".
 
 ### `create_fit_card`
 
 - **What it does:** Writes a short caption someone would actually post about the find.
 - **Inputs:** outfit (str, the suggestion text from suggest_outfit), new_item (dict, one listing)
-- **Returns:** A str caption, two to four sentences.
-- **When it has nothing:** If outfit is empty or whitespace, returns a descriptive message str instead of raising.
+- **Returns:** A str caption, two to four sentences, mentioning the item, price, and platform.
+- **When it has nothing:** If outfit is empty or whitespace, it returns the str "No outfit suggestion was provided, so I can't write a fit card yet." instead of raising.
 
 ---
 
@@ -93,13 +93,13 @@
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:**
+**Branch rule:** If search_listings returns an empty list, put a message in session["error"] naming what the user could change (keywords, size, price ceiling), leave session["fit_card"] as None, and return without calling suggest_outfit. Otherwise, store results[0] in session["selected_item"] and continue to suggest_outfit, then create_fit_card.
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+**How the query is parsed:** Regex in agent.py::parse_query, not a model call. It pulls out a price ("under $30"), a size ("size M" or a bare size after a comma), and treats the rest as the description. The same query always parses the same way. Limitation: phrasing like "under thirty dollars" parses to no price.
 
-**What moves through the session:** <!-- which fields, in what order -->
+**What moves through the session:** query, then parsed (description, size, max_price), then search_results, then selected_item (the first result), then outfit_suggestion, then fit_card. Each tool reads its input back out of the session. If the run ends early, session["error"] is set and fit_card stays None. Note: the starter's _search function tries MCP first and falls back to calling search_listings directly.
 
 ---
 
@@ -110,28 +110,87 @@
      1. One FULL query and its output, pasted as text.
      2. Your three per-tool terminal tests — the command and what it printed. -->
 
+## Sample Run
+
 **One full query**
 
 ```
-$ python app.py ask '...'
+$ python app.py ask 'vintage graphic tee under $30, size M'
+[1] parse_query
+      in:  vintage graphic tee under $30, size M
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Mesh Long-Sleeve Top — Black, 90s Silk Slip Dress — Floral, Midi Length … +7 more
+      →    10 match(es)
+[3] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] suggest_outfit
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Here are two ways to style your new Y2K butterfly baby tee using pieces from your existing wardrobe:  ### Outf…
+      →    10 wardrobe item(s)
+[5] create_fit_card
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Found the ultimate 2000s streetwear piece scrolling on depop and honestly cannot get over this butterfly baby …
 
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Outfit:   Here are two ways to style your new Y2K butterfly baby tee using pieces from your existing wardrobe:
+
+### Outfit 1: Classic Y2K Streetwear
+* **New Item:** Y2K Butterfly Baby Tee
+* **Bottoms:** Baggy straight-leg jeans (dark wash)
+* **Outerwear:** Black cropped zip hoodie (worn open or partially zipped to show off the graphic)
+* **Footwear:** Chunky white sneakers
+* **Accessories:** Black crossbody bag
+
+*Why it works:* The fitted, graphic nature of the baby tee contrasts perfectly with the relaxed, baggy fit of the dark wash jeans, nailing that quintessential 2000s silhouette. Tying it together with the black cropped hoodie and chunky white sneakers keeps the color palette balanced and casual.
+
+### Outfit 2: Sweet & Edgy Contrast
+* **New Item:** Y2K Butterfly Baby Tee
+* **Bottoms:** Wide-leg khaki trousers
+* **Outerwear:** Vintage black denim jacket
+* **Footwear:** Black combat boots
+* **Accessories:** Brown leather belt
+
+*Why it works:* This plays on the "cottagecore meets street" vibe. The pink and purple butterfly print pops against the neutral khaki trousers, while the brown belt adds a nice earthy accent. Throwing on the vintage black denim jacket and black combat boots grounds the outfit and gives the sweet butterfly tee a cool, edgy contrast.
+
+  Fit card: Found the ultimate 2000s streetwear piece scrolling on depop and honestly cannot get over this butterfly baby tee. For only $18.0, it's giving major pop-princess-goes-to-the-mall energy and I am so ready to wear it with baggy denim.
+```
+
+**Empty search**
+
+```
+$ python app.py ask 'designer ballgown size XXS under $5'
+[1] parse_query
+      in:  designer ballgown size XXS under $5
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: [] (empty)
+      →    0 match(es)
+[3] branch
+      →    search returned []: stopping before suggest_outfit
+
+  Nothing in the listings matched description 'designer ballgown', size XXS, under $5.
+Things to change: try broader words — 'jacket' finds more than 'cropped corduroy jacket'; drop the size, or try a neighbouring one; raise the price ceiling above $5.
 ```
 
 **The three tools, tested one at a time**
 
 ```
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
-
+[PASTE OUTPUT FROM YOUR TERMINAL]
 ```
 
 ```
-$ python -c "from tools import suggest_outfit; ..."
-
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
+[PASTE OUTPUT FROM YOUR TERMINAL]
 ```
 
 ```
-$ python -c "from tools import create_fit_card; ..."
-
+$ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
+Found the holy grail of 90s denim on depop today and my butt has literally never looked better. These medium wash Levi's 501s were only $38 and they are giving major off-duty supermodel energy. Can't wait to beat them up and wear them on repeat with crisp white sneakers and a beat-up leather jacket.
 ```
 
 ---
@@ -147,15 +206,15 @@ $ python -c "from tools import create_fit_card; ..."
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* The body of search_listings, filtering on price and size and scoring by keyword overlap, using the helpers I'd already written.
+- *What came back:* Working code, but I pasted it in the wrong place, inside suggest_outfit right after its docstring. That caused an IndentationError, and after I fixed that, all my test searches printed [] because search_listings still had its starter `return []`. I found the problem when VS Code's breadcrumb showed the code sitting under suggest_outfit.
+- *What I changed:* I moved the block into search_listings, removed the old `return []`, and re-ran the tests. Search then returned the right listings, the size filter narrowed "M" down to the S/M items, and "spacesuit" returned [].
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* Feedback on my draft acceptance criteria.
+- *What came back:* My criterion 5 said max_price=40 but "$30 or less," so it contradicted itself. My state and fit card criteria also weren't checkable as written, and my state target of 4 of 5 was soft since no model is involved in passing a dict through the session.
+- *What I changed:* I rewrote the state criterion to compare the id of session["selected_item"] with the id of the item that reached suggest_outfit, fixed the price mismatch, and made the fit card criterion about including the price and staying 2 to 4 sentences.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
@@ -179,7 +238,9 @@ $ python -c "from tools import create_fit_card; ..."
 |---|---|---|---|---|---|---|---|
 | 1.  |  |  |  |  |  |  |  |
 | 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
+| 3.  |  |  |  |  |  |  |  |git add .
+
+
 | 4.  |  |  |  |  |  |  |  |
 | 5.  |  |  |  |  |  |  |  |
 
@@ -332,3 +393,7 @@ full. -->
 ---
 
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
+c
+
+
+
