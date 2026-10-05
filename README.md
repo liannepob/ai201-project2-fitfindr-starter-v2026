@@ -99,7 +99,7 @@ A user types what they want to thrift in plain language, like "vintage graphic t
 
 **How the query is parsed:** Regex in agent.py::parse_query, not a model call. It pulls out a price ("under $30"), a size ("size M" or a bare size after a comma), and treats the rest as the description. The same query always parses the same way. Limitation: phrasing like "under thirty dollars" parses to no price.
 
-**What moves through the session:** query, then parsed (description, size, max_price), then search_results, then selected_item (the first result), then outfit_suggestion, then fit_card. Each tool reads its input back out of the session. If the run ends early, session["error"] is set and fit_card stays None. Note: the starter's _search function tries MCP first and falls back to calling search_listings directly.
+**What moves through the session:** **Known limits and what was provided:** Search is a plain keyword match, so it can return loosely related items (for example, a slip dress appeared for a graphic tee query with a size and price ceiling). agent.py shipped with run_agent and parse_query already written; my work was the three tools in tools.py and testing the loop's branch on both a matching and an empty query.
 
 ---
 
@@ -109,8 +109,6 @@ A user types what they want to thrift in plain language, like "vintage graphic t
 
      1. One FULL query and its output, pasted as text.
      2. Your three per-tool terminal tests — the command and what it printed. -->
-
-## Sample Run
 
 **One full query**
 
@@ -180,12 +178,31 @@ Things to change: try broader words — 'jacket' finds more than 'cropped cordur
 
 ```
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
-[PASTE OUTPUT FROM YOUR TERMINAL]
+
+[{'id': 'lst_002', 'title': 'Y2K Baby Tee — Butterfly Print', 'description': 'Super cute early 2000s baby tee with butterfly graphic. Fitted crop length. Tag says medium but fits like a small.', 'category': 'tops', 'style_tags': ['y2k', 'vintage', 'graphic tee', 'cottagecore'], 'size': 'S/M', 'condition': 'excellent', 'price': 18.0, 'colors': ['white', 'pink', 'purple'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_006', 'title': 'Graphic Tee — 2003 Tour Bootleg Style', 'description': 'Vintage-style bootleg tee with faded graphic. Slightly boxy fit. 100% cotton, soft and worn-in.', 'category': 'tops', 'style_tags': ['graphic tee', 'vintage', 'grunge', 'streetwear', 'band tee'], 'size': 'L', 'condition': 'good', 'price': 24.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_017', 'title': 'Mesh Long-Sleeve Top — Black', 'description': 'Sheer black mesh long-sleeve. Great for layering under a graphic tee or over a bralette. Stretchy material, fits true to size.', 'category': 'tops', 'style_tags': ['y2k', 'grunge', 'goth', 'layering'], 'size': 'S/M', 'condition': 'excellent', 'price': 15.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_033', 'title': 'Vintage Band Tee — Faded Grey', 'description': 'Faded grey band-style tee with distressed graphic. Crew neck. Fits boxy. Well-loved but no holes or major damage.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'band tee', 'graphic tee', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 19.0, 'colors': ['grey', 'charcoal'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_011', 'title': 'Low-Rise Cargo Pants — Khaki', 'description': 'Y2K era low-rise cargo pants. Lots of pockets. Khaki color, slightly distressed at the hems. Great for layering with a long tee.', 'category': 'bottoms', 'style_tags': ['y2k', 'cargo', '2000s', 'streetwear'], 'size': 'W29', 'condition': 'fair', 'price': 27.0, 'colors': ['khaki', 'tan'], 'brand': None, 'platform': 'poshmark'}, {'id': 'lst_015', 'title': 'Vintage Graphic Hoodie — Faded Black', 'description': 'Faded black pullover hoodie with barely-visible vintage graphic on the chest. Cozy interior. Some pilling but adds to the worn-in look.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'graphic', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 26.0, 'colors': ['black', 'charcoal'], 'brand': None, 'platform': 'depop'}]
 ```
 
 ```
 $ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
-[PASTE OUTPUT FROM YOUR TERMINAL]
+Great find! Vintage Levi’s 501s in a medium wash are a classic staple that will add a nice textural and color contrast to your darker denim and neutral wardrobe. 
+
+Here are two outfit suggestions using pieces you already own:
+
+### Outfit 1: Casual Streetwear Vibe
+*This look leans into the streetwear aesthetic, pairing the vintage medium wash with monochrome basics for an easy, everyday fit.*
+
+* **Top:** White ribbed tank top
+* **Outerwear:** Black cropped zip hoodie (worn open or layered)
+* **Shoes:** Chunky white sneakers
+* **Accessories:** Black crossbody bag
+
+### Outfit 2: Edgy Layered Look
+*This outfit plays with textures and layers, contrasting the classic blue denim with heavy black outerwear and accessories.*
+
+* **Top:** Oversized grey crewneck sweatshirt
+* **Outerwear:** Vintage black denim jacket
+* **Shoes:** Black combat boots
+* **Accessories:** Brown leather belt (to add a nice vintage-complementing earth tone at the waist)
 ```
 
 ```
@@ -238,9 +255,7 @@ Found the holy grail of 90s denim on depop today and my butt has literally never
 |---|---|---|---|---|---|---|---|
 | 1.  |  |  |  |  |  |  |  |
 | 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |git add .
-
-
+| 3.  |  |  |  |  |  |  |  |
 | 4.  |  |  |  |  |  |  |  |
 | 5.  |  |  |  |  |  |  |  |
 
@@ -391,9 +406,6 @@ full. -->
      ═════════════════════════════════════════════════════════════════════ -->
 
 ---
-
-📖 **How to run this project: [RUNNING.md](RUNNING.md)**
-c
 
 
 
