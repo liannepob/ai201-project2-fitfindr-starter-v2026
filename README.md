@@ -315,13 +315,69 @@ that produced it:
 **Happy path**
 
 ```
+$ python app.py ask 'vintage graphic tee under $30' --trace
 
+[1] parse_query
+      in:  vintage graphic tee under $30
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+      →    10 match(es)
+[3] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] suggest_outfit
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Here are two ways to style your new Y2K butterfly baby tee using pieces from your existing wardrobe:  ### Outf…
+      →    10 wardrobe item(s)
+[5] create_fit_card
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Found the ultimate 2000s streetwear piece scrolling on depop and honestly cannot get over this butterfly baby …
+
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Outfit:   Here are two ways to style your new Y2K butterfly baby tee using pieces from your existing wardrobe:
+
+### Outfit 1: Classic Y2K Streetwear
+* **New Item:** Y2K Butterfly Baby Tee
+* **Bottoms:** Baggy straight-leg jeans (dark wash)
+* **Outerwear:** Black cropped zip hoodie (worn open or partially zipped to show off the graphic)
+* **Footwear:** Chunky white sneakers
+* **Accessories:** Black crossbody bag
+
+*Why it works:* The fitted, graphic nature of the baby tee contrasts perfectly with the relaxed, baggy fit of the dark wash jeans, nailing that quintessential 2000s silhouette. Tying it together with the black cropped hoodie and chunky white sneakers keeps the color palette balanced and casual.
+
+### Outfit 2: Sweet & Edgy Contrast
+* **New Item:** Y2K Butterfly Baby Tee
+* **Bottoms:** Wide-leg khaki trousers
+* **Outerwear:** Vintage black denim jacket
+* **Footwear:** Black combat boots
+* **Accessories:** Brown leather belt
+
+*Why it works:* This plays on the "cottagecore meets street" vibe. The pink and purple butterfly print pops against the neutral khaki trousers, while the brown belt adds a nice earthy accent. Throwing on the vintage black denim jacket and black combat boots grounds the outfit and gives the sweet butterfly tee a cool, edgy contrast.
+
+  Fit card: Found the ultimate 2000s streetwear piece scrolling on depop and honestly cannot get over this butterfly baby tee. For only $18.0, it’s giving major pop-princess-goes-to-the-mall energy and I am so ready to wear it with baggy denim.
+
+0 model calls this session, 2 served from cache
 ```
 
 **Empty search**
 
 ```
+$ python app.py ask 'designer ballgown size XXS under $5' --trace
 
+[1] parse_query
+      in:  designer ballgown size XXS under $5
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: [] (empty)
+      →    0 match(es)
+[3] branch
+      →    search returned []: stopping before suggest_outfit
+
+  Nothing in the listings matched description 'designer ballgown', size XXS, under $5.
+Things to change: try broader words — 'jacket' finds more than 'cropped corduroy jacket'; drop the size, or try a neighbouring one; raise the price ceiling above $5.
 ```
 
 **On the MCP move:** <!-- what changed in your code, and whether anything
@@ -329,7 +385,22 @@ behaved differently afterwards. If the rewire didn't work, say exactly where it
 broke — the error text and the last thing that worked. That earns the point in
 full. -->
 
+I registered `search_listings` in `mcp_server.py` and changed `run_agent()` to call it through `mcp_client.call_tool` instead of calling it directly. At first the registration was only half-uncommented, so the server couldn't load and the agent quietly fell back to the direct call. After this fix, the tool showed up in `python mcp_client.py` and the results over MCP matched the direct call exactly on three test queries (10, 0 and 3 matches).
 
+
+### Failure Modes
+
+**Empty search.** Triggered with `python app.py ask 'designer ballgown size XXS under $5'`.
+Agent said: "Nothing in the listings matched description 'designer ballgown', size XXS, under $5. Things to change: try broader words — 'jacket' finds more than 'cropped corduroy jacket'; drop the size, or try a neighbouring one; raise the price ceiling above $5."
+It stopped before suggest_outfit. Handled, no change needed.
+
+**Empty wardrobe.** Triggered with `python app.py ask 'denim jacket under $50' --empty-wardrobe`.
+Agent gave two general outfit ideas and ended with: "Once you start adding items to your digital wardrobe, you can mix and match these silhouettes with your own specific pieces!"
+No crash, no empty string. Handled, no change needed.
+
+**Model unavailable.** Triggered by changing one character of GEMINI_API_KEY and asking a new query (`striped knit sweater under $40`).
+Agent said: "The model couldn't be reached, so the outfit and caption steps didn't run. The search worked — 2 listing(s) were found. Check GEMINI_API_KEY in your .env, then run the same query again."
+No hang, no stack trace. Handled, no change needed.
 
 ---
 
