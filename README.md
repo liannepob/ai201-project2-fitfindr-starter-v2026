@@ -251,19 +251,74 @@ Found the holy grail of 90s denim on depop today and my butt has literally never
      `python run_eval.py --label before` runs everything and writes the table
      into results/. Paste it here and fill in the verdicts. -->
 
+Produced by `python run_eval.py --label before` (`run_eval.py::main`, which calls `agent.py::run_agent` five times per scenario with caching off). Full log: `results/run_2026-10-07_1853_before.md`.
+
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. A matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. An impossible query stops before the second tool | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Selected item's id matches the item that reached suggest_outfit | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card includes the price and is 2 to 4 sentences | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. With max_price=40, every listing returned is $40 or less | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
 **Real output from one try**, pasted as text, naming the file and function
 that produced it:
 
+Criterion 1, try 1. Trace from `trace.py` via `agent.py::run_agent`, query `vintage graphic tee under $30`:
+```
+[1] parse_query
+      in:  vintage graphic tee under $30
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+      →    10 match(es)
+[3] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] suggest_outfit
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Here is a great Y2K-inspired outfit using your new butterfly baby tee and pieces from your wardrobe:  ### The …
+      →    10 wardrobe item(s)
+[5] create_fit_card
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Found this little butterfly baby tee on depop for $18 and my inner 2004 self is screaming. Absolutely living f…
+
+fit_card: Found this little butterfly baby tee on depop for $18 and my inner 2004 self is screaming. Absolutely living for the fitted-top-baggy-jeans ratio today, especially with the oversized grey crewneck thrown over my shoulders. Feels straight out of a Disney Channel Original Movie.
 ```
 
+Criterion 2, try 1. `agent.py::run_agent` returning early from the branch, query `designer ballgown size XXS under $5`:
+```
+[1] parse_query
+      in:  designer ballgown size XXS under $5
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: [] (empty)
+      →    0 match(es)
+[3] branch
+      →    search returned []: stopping before suggest_outfit
+
+session["error"]: Nothing in the listings matched description 'designer ballgown', size XXS, under $5.
+Things to change: try broader words — 'jacket' finds more than 'cropped corduroy jacket'; drop the size, or try a neighbouring one; raise the price ceiling above $5.
+session["outfit_suggestion"]: None
+session["fit_card"]: None
+```
+
+Criterion 3, try 1. `session["selected_item"]` from `agent.py::run_agent`, compared with the `suggest_outfit` input in the trace, query `denim jacket under $50`:
+```
+session["selected_item"]["id"]:    lst_007
+session["selected_item"]["title"]: Denim Jacket — Light Wash, Cropped
+trace, [4] suggest_outfit in:      Denim Jacket — Light Wash, Cropped ($42.0, poshmark)
+```
+
+Criterion 4, try 1. `tools.py::create_fit_card` (listing price $18):
+```
+Found the ultimate Y2K butterfly baby tee scrollin' on depop for just $18.00 and honestly I am never taking it off. Stacking it with my baggiest dark denim and chunky sneakers for that effortless low-rise streetwear vibe. 🦋✨
+```
+
+Criterion 5, try 1. `tools.py::search_listings` over MCP, query `vintage denim under $40`, prices of every result:
+```
+[38.0, 24.0, 30.0, 27.0, 18.0, 22.0, 32.0, 24.0, 40.0, 20.0]
 ```
 
 ---

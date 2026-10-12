@@ -47,7 +47,7 @@ Given a query that matches no listings, the agent stops before calling
 ## 3. Something about state
 In 4 of 5 happy-path runs, the i.d. of session ["selected_item"] is identical to the i.d. of the item that reached 'suggest_outfit'. 
 
-<!-- YOU WRITE THIS ONE.
+<!-- 
 
      How would you know that the item your search found is the same item the
      next tool received? Name something countable or observable.
@@ -67,7 +67,7 @@ Checking the id through the session confirms that the item the search found is t
 
 ## 4. Something about the fit card
 In 4 of 5 happy-path runs, the fit card includes the listing's price and is 2 to 4 sentences long.
-<!-- YOU WRITE THIS ONE.
+<!-- 
 
      The fit card calls a model, so the same input can produce different words
      each time. That's not a bug — it's the nature of the tool. So what would
@@ -87,7 +87,7 @@ A model writes the caption, so the wording changes from run to run and it will o
 
 ## 5. Your choice
 In 4 of 5 searches with max_price=40 that match at least one listing, every listing returned costs $40 or less.
-<!-- YOU WRITE THIS ONE TOO.
+<!--
 
      Pick something you actually care about getting right. Speed, the empty
      wardrobe path, what happens when the model can't be reached, whether the
