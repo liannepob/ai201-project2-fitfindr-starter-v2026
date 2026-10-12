@@ -533,8 +533,6 @@ No criterion is still missed, but these are real problems my criteria didn't cat
 - **Criterion 4 only saw one item.** I'd run it on several items, including ones with a brand and different prices.
 - **Price phrasing in words is ignored.** "nothing over thirty dollars" parses to no price ceiling in `agent.py::parse_query`, so the search quietly ignores it.
 
-I stopped here because the unit allows one improvement, and I used it on the criterion 3 measurement gap.
-
 
 
 <!-- ═════════════════════════════════════════════════════════════════════
