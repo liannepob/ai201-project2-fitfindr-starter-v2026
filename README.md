@@ -233,6 +233,16 @@ Found the holy grail of 90s denim on depop today and my butt has literally never
 - *What came back:* My criterion 5 said max_price=40 but "$30 or less," so it contradicted itself. My state and fit card criteria also weren't checkable as written, and my state target of 4 of 5 was soft since no model is involved in passing a dict through the session.
 - *What I changed:* I rewrote the state criterion to compare the id of session["selected_item"] with the id of the item that reached suggest_outfit, fixed the price mismatch, and made the fit card criterion about including the price and staying 2 to 4 sentences.
 
+**Moment 3 (unit 4)**
+- *What I asked for:* Help getting `test.py` to pass and getting MCP working.
+- *What came back:* My terminal was in a second copy of the project nested inside the real one, and my `.venv` had been built inside my Project 1 folder, so `python` wasn't found after activating it. It rebuilt the venv in the right place. It also found that my `search_listings` registration in `mcp_server.py` was only half-uncommented, so the server never loaded and the agent had been quietly falling back to the direct call.
+- *What I changed:* I worked from the real project folder, finished the registration, and checked that MCP results matched the direct call on three queries.
+
+**Moment 4 (unit 4)**
+- *What I asked for:* Help with scenarios for criteria 3 to 5, scoring the runs, and the write-up.
+- *What came back:* Scenarios for each criterion, a script that checked each try against my criteria, and first drafts of these sections. It pointed out that criterion 3 was being checked by title rather than id, and that my MCP description promises a price tie-break the code doesn't do.
+- *What I changed:* I read the fit cards myself instead of trusting the sentence counter and chose the criterion 3 measurement fix as my one improvement.
+
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
      Don't fill these in during unit 3.
@@ -343,13 +353,20 @@ Criterion 5, try 1. `tools.py::search_listings` over MCP, query `vintage denim u
 
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
-| 4 |  |  |  |  |
-| 5 |  |  |  |  |
+| 1 | A matching query completes all three tools | 4 of 5 | MET (5/5) | In all 5 tries `session["error"]` was None and both `outfit_suggestion` and `fit_card` were filled in. |
+| 2 | An impossible query stops before the second tool | 5 of 5 | MET (5/5) | In all 5 tries `session["error"]` named what to change, `outfit_suggestion` and `fit_card` stayed None, and the trace ended at the `branch` step. |
+| 3 | Selected item's id matches the item that reached suggest_outfit | 4 of 5 | MET (5/5) | Before the fix the trace only printed titles, so I compared the selected item's title with the `suggest_outfit` input title; all 5 matched (lst_007). After the fix I compared ids directly, and all 5 were lst_007 on both sides. |
+| 4 | Fit card includes the price and is 2 to 4 sentences | 4 of 5 | MET (5/5) | I read all five cards. Each one mentions $18 (one wrote it as $18.00) and each is 2 or 3 sentences. |
+| 5 | With max_price=40, every listing returned is $40 or less | 4 of 5 | MET (5/5) | Every try returned 10 listings and the highest price was $40.00, so nothing went over and the ceiling is inclusive. |
 
 **Diagnoses**
+
+Nothing missed, so there is no failure to diagnose. The honest reading is that some of my targets were too easy:
+
+- **Criterion 5 should have been 5 of 5.** It is plain filtering in `tools.py::search_listings` with no model involved, and my own reason says a miss would mean a real bug. 4 of 5 allowed one bug through. This is the one I'd tighten.
+- **Criterion 3 can't really fail as the agent is built.** `agent.py::run_agent` passes `session["selected_item"]` straight into `suggest_outfit`, so the two are always the same object. It also named ids, but my trace only showed titles, so in the before run I was checking a weaker thing than I wrote. That measurement gap is what my improvement fixed.
+- **Criterion 1's 4 of 5 was justified by search phrasing missing, but the scenario uses a query I knew would match.** So search can't cause a miss here; only a model failure could, and none happened.
+- **Pattern:** every criterion was tested with a single query, and criterion 4 only ever saw one item ($18 tee, which has a brand of null). The results say the agent is consistent on those inputs, not that it holds across the catalog.
 
 
 
@@ -468,7 +485,7 @@ No hang, no stack trace. Handled, no change needed.
 
 **What I changed:** In `agent.py::run_agent`, the item handed to `suggest_outfit` is now recorded by id in `session["outfit_item_id"]`, and both the `select_item` and `suggest_outfit` trace steps print the item's id. Nothing else changed.
 
-**Which failure it was meant to fix:**
+**Which failure it was meant to fix:** Not a missed target, a measurement gap. Criterion 3 compares ids, but the trace and run log only showed titles, so the before verdict rested on matching titles (two listings could share one). Recording the id makes criterion 3 checkable the way it is written.
 
 ### Run Log — After
 
@@ -497,6 +514,8 @@ Criterion 3, try 1, now compared by id. Trace from `agent.py::run_agent`, query 
 <!-- If it made things worse, say that. Honestly reported, that earns full
      credit and is more interesting than one that worked. -->
 
+The numbers didn't move: every criterion was MET (5/5) before and after, because nothing was failing. It helped with measurement, not results. Criterion 3 is now scored on ids, and the after log shows `id lst_007` at `select_item` and `item id lst_007` at `suggest_outfit` in all five tries. It does not make criterion 3 able to fail, since `suggest_outfit` still receives the session's item directly.
+
 
 
 ---
@@ -506,6 +525,15 @@ Criterion 3, try 1, now compared by id. Trace from `agent.py::run_agent`, query 
 <!-- For each criterion still missed: what you'd do, and why you stopped where
      you did. "I ran out of time" is fine if it's true. Pretending nothing is
      left is not. -->
+
+No criterion is still missed, but these are real problems my criteria didn't catch:
+
+- **Ties in search aren't broken by price.** `tools.py::search_listings` scores by how many query keywords a listing shares, then sorts only by that score. For "vintage graphic tee under $30" the top four listings all tie, so the agent picks whichever comes first in the data file (the butterfly baby tee) over "Graphic Tee — 2003 Tour Bootleg Style". My MCP tool description says "cheaper first among equal matches", which the code doesn't do. I'd add price as a second sort key so the code matches the published description.
+- **Criterion 3 can't fail as written.** To make it meaningful I'd check something downstream, for example that the outfit text actually names the selected item.
+- **Criterion 4 only saw one item.** I'd run it on several items, including ones with a brand and different prices.
+- **Price phrasing in words is ignored.** "nothing over thirty dollars" parses to no price ceiling in `agent.py::parse_query`, so the search quietly ignores it.
+
+I stopped here because the unit allows one improvement, and I used it on the criterion 3 measurement gap.
 
 
 
