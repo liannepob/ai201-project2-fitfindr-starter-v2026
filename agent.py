@@ -39,6 +39,7 @@ def new_session(query: str, wardrobe: dict) -> dict:
         "parsed": {},                # description / size / max_price you pulled out of it
         "search_results": [],        # everything search_listings returned
         "selected_item": None,       # the one you chose — goes into suggest_outfit
+        "outfit_item_id": None,      # id of the item suggest_outfit actually received
         "wardrobe": wardrobe,        # the user's wardrobe
         "outfit_suggestion": None,   # what suggest_outfit returned
         "fit_card": None,            # what create_fit_card returned
@@ -178,18 +179,27 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         steps += 1
         trace.check_iterations(steps)
         session["selected_item"] = results[0]
-        trace.step("select_item", returned=session["selected_item"])
+        trace.step(
+            "select_item",
+            returned=session["selected_item"],
+            note=f"id {session['selected_item'].get('id')}",
+        )
 
         steps += 1
         trace.check_iterations(steps)
-        session["outfit_suggestion"] = suggest_outfit(
-            session["selected_item"], session["wardrobe"]
-        )
+        # Record the id of what suggest_outfit is actually handed, so criterion 3
+        # can compare ids rather than titles.
+        outfit_item = session["selected_item"]
+        session["outfit_item_id"] = outfit_item.get("id")
+        session["outfit_suggestion"] = suggest_outfit(outfit_item, session["wardrobe"])
         trace.step(
             "suggest_outfit",
-            inputs=session["selected_item"],
+            inputs=outfit_item,
             returned=session["outfit_suggestion"],
-            note=f"{len(session['wardrobe'].get('items') or [])} wardrobe item(s)",
+            note=(
+                f"item id {session['outfit_item_id']}, "
+                f"{len(session['wardrobe'].get('items') or [])} wardrobe item(s)"
+            ),
         )
 
         steps += 1

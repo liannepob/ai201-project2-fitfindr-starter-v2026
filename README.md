@@ -466,19 +466,31 @@ No hang, no stack trace. Handled, no change needed.
 
      `python run_eval.py --label after` -->
 
-**What I changed:**
+**What I changed:** In `agent.py::run_agent`, the item handed to `suggest_outfit` is now recorded by id in `session["outfit_item_id"]`, and both the `select_item` and `suggest_outfit` trace steps print the item's id. Nothing else changed.
 
 **Which failure it was meant to fix:**
 
 ### Run Log — After
 
+Produced by `python run_eval.py --label after` (`run_eval.py::main` → `agent.py::run_agent`, five tries per scenario, caching off). Full log: `results/run_2026-10-11_2146_after.md`.
+
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. A matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. An impossible query stops before the second tool | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Selected item's id matches the item that reached suggest_outfit | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card includes the price and is 2 to 4 sentences | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. With max_price=40, every listing returned is $40 or less | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+
+Criterion 3, try 1, now compared by id. Trace from `agent.py::run_agent`, query `denim jacket under $50`:
+```
+[3] select_item
+      out: Denim Jacket — Light Wash, Cropped ($42.0, poshmark)
+      →    id lst_007
+[4] suggest_outfit
+      in:  Denim Jacket — Light Wash, Cropped ($42.0, poshmark)
+      →    item id lst_007, 10 wardrobe item(s)
+```
 
 **Did it help, and how do I know:**
 
